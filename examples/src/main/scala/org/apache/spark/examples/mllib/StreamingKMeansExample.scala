@@ -19,10 +19,25 @@
 package org.apache.spark.examples.mllib
 
 import org.apache.spark.SparkConf
-import org.apache.spark.mllib.clustering.StreamingKMeans
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.mllib.clustering.StreamingKMeans
+import org.apache.spark.examples.streaming.StreamingExamples;
+
+// han
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.streaming.kafka._
+import kafka.serializer.StringDecoder
+import org.apache.spark.streaming._
+import org.apache.spark.streaming.kafka._
+import org.apache.spark.SparkConf
+import org.apache.spark.examples.streaming._
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.{Seconds,StreamingContext}
+import org.apache.spark.streaming.kafka._
+import org.apache.spark.streaming.dstream._
+import org.apache.spark.storage.StorageLevel
 
 /**
  * Estimate clusters on one stream of data and make predictions
@@ -50,30 +65,74 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
  */
 object StreamingKMeansExample {
 
+
+//hibench.kmeans.huge.num_of_clusters             5
+//hibench.kmeans.huge.dimensions                  20
+//hibench.kmeans.huge.num_of_samples              100000000
+//hibench.kmeans.huge.samples_per_inputfile       20000000
+//hibench.kmeans.huge.max_iteration               5
+//hibench.kmeans.huge.k                           10
+//hibench.kmeans.huge.convergedist                0.5
+
+
   def main(args: Array[String]) {
     if (args.length != 5) {
-      System.err.println(
-        "Usage: StreamingKMeansExample " +
-          "<trainingDir> <testDir> <batchDuration> <numClusters> <numDimensions>")
-      System.exit(1)
+
+    System.err.println(s"""
+        |Usage: DirectKafkaWordCount <brokers> <topics> <batchDuration> <numClusters> <numDimensions>
+        |  <brokers> is a list of one or more Kafka brokers
+        |  <topics> is a list of one or more kafka topics to consume from
+        |
+        """.stripMargin)
+
+
+      //System.err.println(
+      //  "Usage: StreamingKMeansExample " +
+      //    "> <testDir> <batchDuration> <numClusters> <numDimensions>")
+      //System.exit(1)
     }
 
-    val conf = new SparkConf().setMaster("local").setAppName("StreamingKMeansExample")
-    val ssc = new StreamingContext(conf, Seconds(args(2).toLong))
+	// han
+    //val conf = new SparkConf().setMaster("local").setAppName("StreamingKMeansExample")
+    //val ssc = new StreamingContext(conf, Seconds(args(2).toLong))
 
-    val trainingData = ssc.textFileStream(args(0)).map(Vectors.parse)
-    val testData = ssc.textFileStream(args(1)).map(LabeledPoint.parse)
+
+	// han
+    StreamingExamples.setStreamingLogLevels()
+    val Array(brokers, topics)  = args.slice(0, 2)
+
+    // Create context with 2 second batch interval
+    val sparkConf = new SparkConf().setAppName("StreamingKMeansExample")
+    val ssc = new StreamingContext(sparkConf, Seconds(args(2).toLong))
+
+    // Create direct kafka stream with brokers and topics
+    val topicsSet = topics.split(",").toSet
+    val kafkaParams = Map[String, String]("metadata.broker.list" -> brokers)
+
+	var trainingData = createDirectStream(ssc, kafkaParams, topicsSet).map(_._2).map(Vectors.parse)
+
+	// han
+    //val trainingData = ssc.textFileStream(args(0)).map(Vectors.parse)
+    //val testData = ssc.textFileStream(args(1)).map(LabeledPoint.parse)
 
     val model = new StreamingKMeans()
       .setK(args(3).toInt)
       .setDecayFactor(1.0)
       .setRandomCenters(args(4).toInt, 0.0)
 
-    model.trainOn(trainingData)
-    model.predictOnValues(testData.map(lp => (lp.label, lp.features))).print()
+    	model.trainOn(trainingData)
+	println(model.latestModel)
+	
+	// han
+    //model.predictOnValues(testData.map(lp => (lp.label, lp.features))).print()
 
     ssc.start()
     ssc.awaitTermination()
   }
+
+		def createDirectStream(ssc:StreamingContext, kafkaParams:Map[String, String], topicSet:Set[String]):DStream[(String, String)]={
+			println(s"Create direct kafka stream, args:$kafkaParams")
+			KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topicSet)
+		}
 }
 // scalastyle:on println
