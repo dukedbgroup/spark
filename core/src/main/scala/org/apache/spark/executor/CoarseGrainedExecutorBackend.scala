@@ -449,6 +449,14 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
         try { res = getProcessUsedMemoryAndCPU(datanodePID); s += "\t" + res._1 + "\t" + res._2 } catch{ case e:Exception => e.printStackTrace() }
         try { res = getProcessUsedMemoryAndCPU(nodemanagerPID); s += "\t" + res._1 + "\t" + res._2 } catch{ case e:Exception => e.printStackTrace() }
 
+        // Get storage and execution memory usage
+        try {
+        val env = SparkEnv.get
+        val mm = env.memoryManager
+        s += "\t" + mm.storageMemoryUsed
+        s += "\t" + mm.executionMemoryUsed
+        } catch{ case e:Exception => e.printStackTrace() }
+
         if (i % TIMESTAMP_PERIOD == 0) {
           var time: String = dateFormat.format(new Date())
           s += "\t" + time
