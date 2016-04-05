@@ -221,31 +221,6 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     var CPU = 0d;
     val NUMCPU = 8;
     var process = ""
-/*    val commands = new java.util.Vector[String]()
-    commands.add("/bin/bash")
-    commands.add("-c")
-    commands.add("ps aux | grep " + processID)
-    val pb=new java.lang.ProcessBuilder(commands)
-    val pr=pb.start()
-    pr.waitFor()
-    if (pr.exitValue()==0) {
-     val outReader=new java.io.BufferedReader(new java.io.InputStreamReader(pr.getInputStream()));
-     var source = ""
-     source = outReader.readLine()
-     while(source != null) { 
-      try {
-      val tokens = source.split(" +")
-      if(tokens(1).equals(processID)) {
-       memory = 1024L*tokens(5).toLong
-       CPU = tokens(2).toDouble / NUMCPU      
-      }
-      } catch { case e: Exception => () }
-      finally {
-       source = outReader.readLine()
-      }
-     }
-    }
-*/
 
     val topout = Seq("/bin/sh", "-c", "top -n 1 -b -p " + processID + " | tail -1").!!.trim.split(" +")
     val len = topout(5).length
@@ -313,7 +288,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     val TIMESTAMP_PERIOD: Long = 1000
     var dateFormat: DateFormat = new SimpleDateFormat("hh:mm:ss")
 
-    val dirname_executor = Properties.envOrElse("SPARK_HOME", "/home/mayuresh/spark-1.5.1") + "/logs/" + appId + "/" + executorId
+    val dirname_executor = Properties.envOrElse("HOME", "/tmp") + "/spark-logs/" + appId + "/" + executorId
     val dir_executor = new File(dirname_executor)
     if (!dir_executor.exists())
       dir_executor.mkdirs()
@@ -322,7 +297,6 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     if (!dir_histo.exists())
       dir_histo.mkdirs()
 
-    //    val writer = new FileWriter(new File("/home/ubuntu/sparkOutput/sparkOutput_executor_" + System.nanoTime() + ".txt"), true)
     val writer = new FileWriter(new File(dirname_executor + "/" + "sparkOutput_worker_" + appId + "_" + executorId + ".txt"), true)
     writer.write(appId + "_" + executorId + "\n")
     writer.flush()
@@ -341,7 +315,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       b =>
         s += b.getName() + "\t";
     }
-    s += "Used heap\tCommitted heap\tMax heap\tUsed nonheap\tCommitted nonheap\tMax nonheap\tTotal memory\tUsed CPU"
+    s += "Used heap\tCommitted heap\tMax heap\tUsed nonheap\tCommitted nonheap\tMax nonheap\tSpark offheap\tUsed CPU OSBean\tUsed Exec Memory\tUsed Exec CPU\tUsed DN Memory\tUsed DN CPU\tUsed NM Memory\tUsed NM CPU\tSpark Storage Memory\tSpark Execution Memory"
     writer.write(s + "\n")
     writer.flush()
 
@@ -355,21 +329,6 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     var datanodePID: String = ""
     var nodemanagerPID: String = ""
 
-/*    val commands = new java.util.Vector[String]()
-    commands.add("/bin/bash")
-    commands.add("-c")
-    commands.add("echo $PPID")
-    val pb=new java.lang.ProcessBuilder(commands)
-    val pr=pb.start()
-    pr.waitFor()
-    if (pr.exitValue()==0) {
-     val outReader=new java.io.BufferedReader(new java.io.InputStreamReader(pr.getInputStream()));
-     processID = outReader.readLine().trim()
-     println("Found process ID: " + processID)
-    } else {
-     println("Error while getting PID")
-    }  
-*/
     val pname = ManagementFactory.getRuntimeMXBean().getName()
     processID = pname.substring(0, pname.indexOf('@'))
 
@@ -462,7 +421,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
           s += "\t" + time
         }
 
-        
+        /*
         if (i % JMAP_PERIOD == 0) {
           var time: String = dateFormat.format(new Date())
           val pname = ManagementFactory.getRuntimeMXBean().getName()
@@ -474,7 +433,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
           writer1.flush()
           writer1.close()
         }
-        
+        */
 
         i = i + SAMPLING_PERIOD
         writer.write(s + "\n")
@@ -488,8 +447,8 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     run(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath)
 
     // han sampler 2 begin
-    avgUsedCPU /= numberOfCPUSamples
-    logInfo("Average used CPU of executor " + executorId + ": " + avgUsedCPU)
+    // avgUsedCPU /= numberOfCPUSamples
+    // logInfo("Average used CPU of executor " + executorId + ": " + avgUsedCPU)
 
     f.cancel(true)
     writer.flush()
