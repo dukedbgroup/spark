@@ -288,7 +288,20 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
     val TIMESTAMP_PERIOD: Long = 1000
     var dateFormat: DateFormat = new SimpleDateFormat("hh:mm:ss")
 
-    val dirname_executor = Properties.envOrElse("HOME", "/tmp") + "/spark-logs/" + appId + "/" + executorId
+    val system_properties = Utils.getSystemProperties
+    val user_home = system_properties.get("user.home")
+    var dirname_executor = ""
+    user_home match {
+        case None        => {
+            dirname_executor = "/tmp" + "/spark-logs/" + appId + "/" + executorId
+        }
+        case Some(value) => {
+            dirname_executor = value + "/spark-logs/" + appId + "/" + executorId
+        }
+    }
+
+    logInfo("user home: " + user_home + ", dirname_executor: " + dirname_executor)
+
     val dir_executor = new File(dirname_executor)
     if (!dir_executor.exists())
       dir_executor.mkdirs()
