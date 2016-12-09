@@ -18,24 +18,20 @@
 // scalastyle:off println
 package org.apache.spark.examples
 
+import java.io._
+import java.lang.System
+import java.text._
+import java.util.Arrays
+import java.util.Date
+import java.util.List
+import java.util.concurrent._
+import java.util.regex.Pattern
+
 import scala.Tuple2
-import org.apache.spark.SparkConf
+import scala.util.Properties
 
 import org.apache.spark._
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Pattern;
-
-// han sampler import begin
-import java.io._
 import org.apache.spark.storage._
-import java.lang.System
-import java.util.Date
-import java.util.concurrent._
-import java.text._
-import scala.util.Properties
-// han sampler import end
 
 object WordCount {
 
@@ -56,10 +52,12 @@ object WordCount {
 
     var dateFormat: DateFormat = new SimpleDateFormat("hh:mm:ss")
 
-    val dirname_application = Properties.envOrElse("SPARK_HOME", "/home/mayuresh/spark-1.5.1") + "/logs/" + sc.applicationId
+    val dirname_application = Properties.envOrElse("SPARK_HOME",
+        "/home/mayuresh/spark-1.5.1") + "/logs/" + sc.applicationId
     val dir_application = new File(dirname_application)
-    if (!dir_application.exists())
+    if (!dir_application.exists()) {
       dir_application.mkdirs()
+    }
 
     val ex = new ScheduledThreadPoolExecutor(1)
     val task = new Runnable {
@@ -69,17 +67,18 @@ object WordCount {
         //        sc.getExecutorStorageStatus.filter(s => s.blockManagerId.host.contains("slave1"))
         sc.getExecutorStorageStatus.foreach {
           es =>
-            val filename: String = dirname_application + "/sparkOutput_driver_"  + sc.applicationId + "_" + es.blockManagerId + ".txt"
+            val filename: String = dirname_application +
+               "/sparkOutput_driver_"  + sc.applicationId + "_" + es.blockManagerId + ".txt"
             val file = new File(filename)
             val writer = new FileWriter(file, true)
             if (!file.exists()) {
               file.createNewFile()
               writer.write(sc.applicationId + "_" + es.blockManagerId + "\n")
               writer.flush()
-              //writer.close()
+              // writer.close()
             }
             var s = es.memUsed.toString()
-            //println(s)
+            // println(s)
             if (i % TIMESTAMP_PERIOD == 0) {
               i = 0
               var time: String = dateFormat.format(new Date())
@@ -94,16 +93,16 @@ object WordCount {
       }
     }
     val f = ex.scheduleAtFixedRate(task, 0, SAMPLING_PERIOD, TimeUnit.MILLISECONDS)
-    // han sampler 1 end 
+    // han sampler 1 end
 
     val lines = sc.textFile(args(0), 1)
 
     val words = lines.flatMap(l => SPACE.split(l))
-    val ones = words.map(w => (w,1))
+    val ones = words.map(w => (w, 1))
     val counts = ones.reduceByKey(_ + _)
 
-    //val output = counts.collect()
-    //output.foreach(t => println(t._1 + ": " + t._2))
+    // val output = counts.collect()
+    // output.foreach(t => println(t._1 + ": " + t._2))
     counts.saveAsTextFile(args(1))
 
     sc.stop()
@@ -115,3 +114,4 @@ object WordCount {
   }
 }
 // scalastyle:on println
+
