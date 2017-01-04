@@ -180,10 +180,6 @@ private[spark] class CoarseGrainedExecutorBackend(
                        appId: String,
                        workerUrl: Option[String],
                        userClassPath: Seq[URL]) {
-        // val env0 = SparkEnv.get
-        // if(env0 == null) {
-        //   createEnv(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath)
-        // }
         // SparkHadoopUtil.get.runAsSparkUser { () =>
         var env = SparkEnv.get
         if(env == null) {
@@ -211,7 +207,6 @@ private[spark] class CoarseGrainedExecutorBackend(
           }
         }
 
-        // }
       }
 
   private def createEnv(
@@ -259,6 +254,10 @@ private[spark] class CoarseGrainedExecutorBackend(
           driverConf.get("spark.yarn.credentials.file"))
         SparkHadoopUtil.get.startExecutorDelegationTokenRenewer(driverConf)
       }
+
+      val env = SparkEnv.createExecutorEnv(
+        driverConf, executorId, hostname, port, cores, isLocal = false)
+
       def run: Unit = func()
     }
   }
@@ -267,9 +266,29 @@ private[spark] class CoarseGrainedExecutorBackend(
     var memory = 0d;
     var CPU = 0d;
     val NUMCPU = 8;
-
-    val topout = Seq("/bin/sh", " -c ", "\"top -n 1 -b -p " + processID + " | grep " +
+/*
+    val pb = Process(s"top -n 1 -b -p $processID")
+    val p = pb.run
+    val pio = new ProcessIO(_ => (),
+       stdout => scala.io.Source.fromInputStream(stdout)
+       .getLines.foreach( line =>
+          if (line.contains(processID)) {
+            val topout = line.trim.split(" +")
+            val len = topout(5).length
+            if(topout(5).endsWith("g")) {memory = 1024L*1024L*1024L*topout(5).take(len-1).toDouble}
+            else if(topout(5).endsWith("m")) {memory = 1024L*1024L*topout(5).take(len-1).toDouble}
+            else if(topout(5).endsWith("k")) {memory = 1024L*topout(5).take(len-1).toDouble}
+            else { memory = topout(5).toDouble }
+            CPU = topout(8).toDouble / NUMCPU
+          }
+        ),
+        _ => ())
+    pb.run(pio)
+*/
+    val topout = Seq("/bin/bash", "-c", "top -n 1 -b -p " + processID + " | grep " +
        processID + " | tail -1 ").!!.trim.split(" +")
+    // val processStr = "top -n 1 -b -p " + processID !! #| "grep " + processID #| "tail -1"
+    // val topout = processStr.!!.trim.split(" +")
 
     val len = topout(5).length
     if (topout(5).endsWith("g")) {
@@ -333,6 +352,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       printUsageAndExit()
     }
 
+    // mk: Hack to get SparkEnv created which is used during instrumentation
     createEnv(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath, () => {})
 
     // han sampler 1 begin
@@ -359,9 +379,9 @@ private[spark] class CoarseGrainedExecutorBackend(
     if (!dir_executor.exists()) {
       dir_executor.mkdirs() }
     val dirname_histo = dirname_executor + "/histo"
-    val dir_histo = new File(dirname_histo)
-    if (!dir_histo.exists()) {
-      dir_histo.mkdirs() }
+//    val dir_histo = new File(dirname_histo)
+//    if (!dir_histo.exists()) {
+//      dir_histo.mkdirs() }
 
     val writer = new FileWriter(new File(dirname_executor + "/" + "sparkOutput_worker_" +
        appId + "_" + executorId + ".txt"), true)
@@ -402,6 +422,8 @@ private[spark] class CoarseGrainedExecutorBackend(
     val pname = ManagementFactory.getRuntimeMXBean().getName()
     processID = pname.substring(0, pname.indexOf('@'))
 
+    // get processes running datanode and nodemanager
+    /*
     val jps = new java.util.Vector[String]()
     jps.add("/bin/bash")
     jps.add("-c")
@@ -430,6 +452,9 @@ private[spark] class CoarseGrainedExecutorBackend(
     } else {
       logInfo("Error while getting jps output")
     }
+    */
+
+    // instrumentation thread starts
     val ex = new ScheduledThreadPoolExecutor(1)
     ex.setRemoveOnCancelPolicy(true)
     val task = new Runnable {
@@ -472,11 +497,15 @@ private[spark] class CoarseGrainedExecutorBackend(
         try { res = getProcessUsedMemoryAndCPU(processID); s += "\t" + res._1 + "\t" + res._2 }
           catch { case e: Exception => e.printStackTrace() }
 
+        /*
         try { res = getProcessUsedMemoryAndCPU(datanodePID); s += "\t" + res._1 + "\t" + res._2 }
           catch { case e: Exception => e.printStackTrace() }
 
         try { res = getProcessUsedMemoryAndCPU(nodemanagerPID); s+="\t" + res._1 + "\t" + res._2 }
           catch { case e: Exception => e.printStackTrace() }
+        */
+        // HACK: insert zeros for datanode and nodemanager
+        s += "\t" + 0 + "\t" + 0 + "\t" + 0 + "\t" + 0
 
         // Get storage and execution memory usage
         // try {
@@ -490,13 +519,13 @@ private[spark] class CoarseGrainedExecutorBackend(
         // }
         var env = SparkEnv.get
         if(env == null) {
-          createEnv(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath,
-            () => {
-                env = SparkEnv.get
-                val mm = env.memoryManager
-                s += "\t" + mm.storageMemoryUsed
-                s += "\t" + mm.executionMemoryUsed
-            })
+//          createEnv(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath,
+//            () => {
+//                env = SparkEnv.get
+//                val mm = env.memoryManager
+                s += "\t" + 0
+                s += "\t" + 0
+//            })
         } else {
             val mm = env.memoryManager
             s += "\t" + mm.storageMemoryUsed
@@ -541,8 +570,6 @@ private[spark] class CoarseGrainedExecutorBackend(
     f.cancel(true)
     writer.flush()
     writer.close()
-
-
 
   }
 
