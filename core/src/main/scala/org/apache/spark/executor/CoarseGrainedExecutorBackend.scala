@@ -477,7 +477,12 @@ private[spark] class CoarseGrainedExecutorBackend(
         // s += jmapout.split(" +")(2)
 
         // record off heap memory usage
-        s += 0 // org.apache.spark.unsafe.Platform.TOTAL_BYTES;
+        var env = SparkEnv.get
+        if(env == null) {
+          s += 0 // org.apache.spark.unsafe.Platform.TOTAL_BYTES;
+        } else {
+          s += env.memoryManager.offHeapMemoryUsed
+        }
 
         upTime = rtBean.getUptime() * 10000
         processCPUTime = osBean.getProcessCpuTime()
@@ -517,7 +522,7 @@ private[spark] class CoarseGrainedExecutorBackend(
         //  s += "\t" + 0
         //  s += "\t" + 0
         // }
-        var env = SparkEnv.get
+        env = SparkEnv.get
         if(env == null) {
 //          createEnv(driverUrl, executorId, hostname, cores, appId, workerUrl, userClassPath,
 //            () => {
@@ -574,7 +579,6 @@ private[spark] class CoarseGrainedExecutorBackend(
   }
 
   private def printUsageAndExit() = {
-    // scalastyle:off println
     System.err.println(
       """
       |Usage: CoarseGrainedExecutorBackend [options]

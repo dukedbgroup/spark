@@ -72,6 +72,13 @@ class KMeans private (
     this
   }
 
+  // han
+  private var storageLevel: StorageLevel = null
+  def setStorageLevel(storageLevel: StorageLevel): this.type = {
+    this.storageLevel = storageLevel
+    this
+  }
+
   /**
    * Maximum number of iterations allowed.
    */
@@ -212,7 +219,9 @@ class KMeans private (
 
     // Compute squared norms and cache them.
     val norms = data.map(Vectors.norm(_, 2.0))
-    norms.persist()
+    // han
+    //    norms.persist()
+    norms.persist(storageLevel)
     val zippedData = data.zip(norms).map { case (v, norm) =>
       new VectorWithNorm(v, norm)
     }
@@ -409,7 +418,8 @@ class KMeans private (
           Array.tabulate(runs) { r =>
             math.min(KMeans.pointCost(bcNewCenters.value(r), point), cost(r))
           }
-        }.persist(StorageLevel.MEMORY_AND_DISK)
+        }.persist(storageLevel)
+     // han: (StorageLevel.MEMORY_AND_DISK)
       val sumCosts = costs
         .aggregate(new Array[Double](runs))(
           seqOp = (s, v) => {

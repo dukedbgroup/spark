@@ -18,12 +18,25 @@
 // scalastyle:off println
 package org.apache.spark.examples.mllib
 
+import java.io._
+import java.lang.System
+import java.text._
+import java.util.Date
+import java.util.concurrent._
+
+import scala.util.Properties
+
+import org.apache.hadoop.io.LongWritable
 import org.apache.log4j.{Level, Logger}
+import org.apache.mahout.math.VectorWritable
 import scopt.OptionParser
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.clustering.KMeans
+import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 /**
  * An example k-means app. Run with
@@ -45,6 +58,8 @@ object DenseKMeans {
       input: String = null,
       k: Int = -1,
       numIterations: Int = 10,
+      // han
+      storageLevel: String = "NONE",
       initializationMode: InitializationMode = Parallel) extends AbstractParams[Params]
 
   def main(args: Array[String]) {
@@ -56,6 +71,11 @@ object DenseKMeans {
         .required()
         .text(s"number of clusters, required")
         .action((x, c) => c.copy(k = x))
+      // han
+      opt[String]("storageLevel")
+        .required()
+        .text(s"One of (NONE, MEMORY_ONLY, MEMORY_AND_DISK, DISK_ONLY) required")
+        .action((x, c) => c.copy(storageLevel = x))
       opt[Int]("numIterations")
         .text(s"number of iterations, default: ${defaultParams.numIterations}")
         .action((x, c) => c.copy(numIterations = x))
@@ -82,9 +102,29 @@ object DenseKMeans {
 
     Logger.getRootLogger.setLevel(Level.WARN)
 
+    var storageLevel: StorageLevel = null
+    storageLevel = params.storageLevel match {
+      case "NONE" => StorageLevel.NONE
+      case "MEMORY_ONLY" => StorageLevel.MEMORY_ONLY
+      case "MEMORY_AND_DISK" => StorageLevel.MEMORY_AND_DISK
+      case "DISK_ONLY" => StorageLevel.DISK_ONLY
+      case "MEMORY_ONLY_SER" => StorageLevel.MEMORY_ONLY_SER
+    }
+
+    var examples: RDD[Vector] = null
+/*
     val examples = sc.textFile(params.input).map { line =>
       Vectors.dense(line.split(' ').map(_.toDouble))
     }.cache()
+*/
+
+    val data = sc.sequenceFile[LongWritable, VectorWritable](params.input)
+    examples = data.map {
+      case (k, v) =>
+        var vector: Array[Double] = new Array[Double](v.get().size)
+        for (i <- 0 until v.get().size) vector(i) = v.get().get(i)
+        Vectors.dense(vector)
+    }.persist(storageLevel)
 
     val numExamples = examples.count()
 
@@ -99,6 +139,7 @@ object DenseKMeans {
       .setInitializationMode(initMode)
       .setK(params.k)
       .setMaxIterations(params.numIterations)
+      .setStorageLevel(storageLevel)
       .run(examples)
 
     val cost = model.computeCost(examples)

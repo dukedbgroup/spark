@@ -174,6 +174,14 @@ private[spark] abstract class MemoryManager(
   }
 
   /**
+   * Off-heap memory currently in use, in bytes.
+   * @author mpk
+   */
+  final def offHeapMemoryUsed: Long = synchronized {
+    offHeapExecutionMemoryPool.memoryUsed + offHeapStorageMemoryPool.memoryUsed
+  }
+
+  /**
    * Returns the execution memory consumption, in bytes, for the given task.
    */
   private[memory] def getExecutionMemoryUsageForTask(taskAttemptId: Long): Long = synchronized {
