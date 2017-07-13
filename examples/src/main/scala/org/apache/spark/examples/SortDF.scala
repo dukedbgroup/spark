@@ -33,7 +33,7 @@ import scala.util.Properties
 import org.apache.spark._
 import org.apache.spark.storage._
 
-case class Counts(word: String, count: Int)
+// case class Counts(word: String, count: Int)
 
 object SortDF {
 

@@ -285,6 +285,8 @@ private[spark] class CoarseGrainedExecutorBackend(
         _ => ())
     pb.run(pio)
 */
+
+   try {
     val topout = Seq("/bin/bash", "-c", "top -n 1 -b -p " + processID + " | grep " +
        processID + " | tail -1 ").!!.trim.split(" +")
     // val processStr = "top -n 1 -b -p " + processID !! #| "grep " + processID #| "tail -1"
@@ -300,6 +302,7 @@ private[spark] class CoarseGrainedExecutorBackend(
     } else { memory = topout(5).toDouble }
 
     CPU = topout(8).toDouble / NUMCPU
+   } catch { case e: Exception => () }
 
     return (memory, CPU)
   }
@@ -560,7 +563,6 @@ private[spark] class CoarseGrainedExecutorBackend(
         i = i + SAMPLING_PERIOD
         writer.write(s + "\n")
         writer.flush()
-
       }
     }
     val f = ex.scheduleAtFixedRate(task, 0, SAMPLING_PERIOD, TimeUnit.MILLISECONDS)
