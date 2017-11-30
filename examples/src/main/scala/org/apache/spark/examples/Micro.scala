@@ -57,12 +57,13 @@ object Micro {
     //   data = data.cache
     // }
 
+    // cache data
+    if (iterations > 1) { data.persist }
+
+
     // run iterations
     for (i <- 1 to iterations) {
-      // cache data
-      if (iterations > 1) { data.persist }
-
-      // convert to df
+      // convert to dataframe
       val asDF = data.map(t => Counts(t._1, t._2)).toDF()
 
       // scale when shuffleRatio is higher than 1
@@ -79,10 +80,10 @@ Counts(t.getAs[String]("word") + n, t.getAs[Int]("count")) }).toDF()
 
       // sort data
       val sorted = toShuffle.sort("word").count
-
-      // uncache data
-      if (iterations > 1) { data.unpersist }
     }
+
+    // uncache data
+    if (iterations > 1) { data.unpersist }
 
     // val partitioner = new HashPartitioner(partitions = parallel)
     // val sorted = data.sort("word").select("word")
