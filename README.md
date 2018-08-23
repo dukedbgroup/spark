@@ -32,6 +32,10 @@ More detailed documentation is available from the project site, at
 For developing Spark using an IDE, see [Eclipse](https://cwiki.apache.org/confluence/display/SPARK/Useful+Developer+Tools#UsefulDeveloperTools-Eclipse)
 and [IntelliJ](https://cwiki.apache.org/confluence/display/SPARK/Useful+Developer+Tools#UsefulDeveloperTools-IntelliJ).
 
+To build branch-2.0.1 to be used on Thoth, run the following command:
+
+    /build/sbt -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.2 -DskipTests package
+
 ## Interactive Scala Shell
 
 The easiest way to start using Spark is through the Scala shell:
