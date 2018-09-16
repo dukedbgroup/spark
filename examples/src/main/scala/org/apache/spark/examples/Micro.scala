@@ -26,6 +26,7 @@ import java.util.regex.Pattern
 import scala.Tuple2
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
 
 case class Counts(word: String, count: Int)
 
@@ -58,7 +59,7 @@ object Micro {
     // }
 
     // cache data
-    if (iterations > 1) { data.persist }
+    if (iterations > 1) { data.persist(StorageLevel.MEMORY_ONLY)}
 
 
     // run iterations

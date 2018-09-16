@@ -24,7 +24,7 @@ package org.apache.spark.examples.graphx
  */
 object LiveJournalPageRank {
   def main(args: Array[String]) {
-    if (args.length < 1) {
+    if (args.length < 2) {
       System.err.println(
         "Usage: LiveJournalPageRank <edge_list_file>\n" +
           "    --numEPart=<num_edge_partitions>\n" +
@@ -36,7 +36,11 @@ object LiveJournalPageRank {
           "        If specified, the file to write the ranks to.\n" +
           "    [--partStrategy=RandomVertexCut | EdgePartition1D | EdgePartition2D | " +
           "CanonicalRandomVertexCut]\n" +
-          "        The way edges are assigned to edge partitions. Default is RandomVertexCut.")
+          "        The way edges are assigned to edge partitions. Default is RandomVertexCut." +
+          "    [--numIter=<max_num_iterations>]" +
+          "        Max number of iterations" +
+          "     --storageLevel=<String for RDD storage level>\n" +
+          "Storage level of RDD caching (NONE, MEMORY_ONLY, MEMORY_AND_DISK, DISK_ONLY)")
       System.exit(-1)
     }
 

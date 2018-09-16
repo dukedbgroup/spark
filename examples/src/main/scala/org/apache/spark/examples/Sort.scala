@@ -38,7 +38,7 @@ object Sort {
   val SPACE = Pattern.compile(" ")
 
   def main(args: Array[String]) {
-    if (args.length < 1) {
+    if (args.length < 2) {
       println("Usage: WordCount <file>");
       System.exit(1);
     }
@@ -48,7 +48,7 @@ object Sort {
     val sc = new SparkContext(conf)
 
     // han sampler 1 begin
-    val SAMPLING_PERIOD: Long = 10
+/*    val SAMPLING_PERIOD: Long = 10
     val TIMESTAMP_PERIOD: Long = 1000
 
     var dateFormat: DateFormat = new SimpleDateFormat("hh:mm:ss")
@@ -94,22 +94,18 @@ object Sort {
       }
     }
     val f = ex.scheduleAtFixedRate(task, 0, SAMPLING_PERIOD, TimeUnit.MILLISECONDS)
-    // han sampler 1 end
+*/    // han sampler 1 end
 
     val lines = sc.textFile(args(0), 1)
-    // val parallel = sc.getConf.getInt("spark.default.parallelism", sc.defaultParallelism)/2
     val data = lines.map((_, 1))
-    // val partitioner = new HashPartitioner(partitions = parallel)
     val sorted = data.sortByKey().map(_._1)
 
-    // val output = counts.collect()
-    // output.foreach(t => println(t._1 + ": " + t._2))
     sorted.saveAsTextFile(args(1))
 
     sc.stop()
 
     // han sampler 2 begin
-    f.cancel(true)
+//    f.cancel(true)
     // hand sampler 2 end
     sys.exit(0)
   }

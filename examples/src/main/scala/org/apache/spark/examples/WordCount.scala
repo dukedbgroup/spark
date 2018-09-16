@@ -38,7 +38,7 @@ object WordCount {
   val SPACE = Pattern.compile(" ")
 
   def main(args: Array[String]) {
-    if (args.length < 1) {
+    if (args.length < 2) {
       println("Usage: WordCount <file>");
       System.exit(1);
     }
@@ -47,7 +47,7 @@ object WordCount {
     val sc = new SparkContext(conf)
 
     // han sampler 1 begin
-    val SAMPLING_PERIOD: Long = 10
+/*    val SAMPLING_PERIOD: Long = 10
     val TIMESTAMP_PERIOD: Long = 1000
 
     var dateFormat: DateFormat = new SimpleDateFormat("hh:mm:ss")
@@ -93,7 +93,7 @@ object WordCount {
       }
     }
     val f = ex.scheduleAtFixedRate(task, 0, SAMPLING_PERIOD, TimeUnit.MILLISECONDS)
-    // han sampler 1 end
+*/    // han sampler 1 end
 
     val lines = sc.textFile(args(0), 1)
 
@@ -101,14 +101,12 @@ object WordCount {
     val ones = words.map(w => (w, 1))
     val counts = ones.reduceByKey(_ + _)
 
-    // val output = counts.collect()
-    // output.foreach(t => println(t._1 + ": " + t._2))
     counts.saveAsTextFile(args(1))
 
     sc.stop()
 
     // han sampler 2 begin
-    f.cancel(true)
+//    f.cancel(true)
     // hand sampler 2 end
     sys.exit(0)
   }

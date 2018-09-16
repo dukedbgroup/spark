@@ -60,6 +60,11 @@ object Analytics extends Logging {
       println("Set the number of edge partitions using --numEPart.")
       sys.exit(1)
     }
+
+    // han
+    var storageLevel: StorageLevel = options.remove("storageLevel")
+      .map(StorageLevel.fromString(_)).getOrElse(null)
+
     val partitionStrategy: Option[PartitionStrategy] = options.remove("partStrategy")
       .map(PartitionStrategy.fromString(_))
     val edgeStorageLevel = options.remove("edgeStorageLevel")
@@ -85,17 +90,29 @@ object Analytics extends Logging {
 
         val unpartitionedGraph = GraphLoader.edgeListFile(sc, fname,
           numEdgePartitions = numEPart,
-          edgeStorageLevel = edgeStorageLevel,
-          vertexStorageLevel = vertexStorageLevel).cache()
+          // han
+          // edgeStorageLevel = edgeStorageLevel,
+          // vertexStorageLevel = vertexStorageLevel)
+          edgeStorageLevel = storageLevel,
+          vertexStorageLevel = storageLevel)
+          .cache()
         val graph = partitionStrategy.foldLeft(unpartitionedGraph)(_.partitionBy(_))
 
         println("GRAPHX: Number of vertices " + graph.vertices.count)
         println("GRAPHX: Number of edges " + graph.edges.count)
 
+        // han
+        // val pr = (numIterOpt match {
+        //  case Some(numIter) => PageRank.run(graph, numIter)
+        //  case None => PageRank.runUntilConvergence(graph, tol)
+        // }).vertices.cache()
         val pr = (numIterOpt match {
-          case Some(numIter) => PageRank.run(graph, numIter)
-          case None => PageRank.runUntilConvergence(graph, tol)
-        }).vertices.cache()
+          case Some(numIter) => PageRank.run_storageLevel(graph = graph, numIter = numIter,
+            storageLevel = storageLevel)
+          case None => PageRank.runUntilConvergence_storageLevel(graph = graph, tol = tol,
+             storageLevel = storageLevel)
+        }).vertices
+          .persist(storageLevel)
 
         println("GRAPHX: Total rank: " + pr.map(_._2).reduce(_ + _))
 

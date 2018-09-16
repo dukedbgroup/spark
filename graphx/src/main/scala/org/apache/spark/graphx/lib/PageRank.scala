@@ -22,6 +22,7 @@ import scala.reflect.ClassTag
 
 import org.apache.spark.graphx._
 import org.apache.spark.internal.Logging
+import org.apache.spark.storage.StorageLevel
 
 /**
  * PageRank algorithm implementation. There are two implementations of PageRank implemented.
@@ -61,6 +62,8 @@ import org.apache.spark.internal.Logging
  */
 object PageRank extends Logging {
 
+  // han
+  private var storageLevel: StorageLevel = null
 
   /**
    * Run PageRank for a fixed number of iterations returning a graph
@@ -81,6 +84,14 @@ object PageRank extends Logging {
     resetProb: Double = 0.15): Graph[Double, Double] =
   {
     runWithOptions(graph, numIter, resetProb)
+  }
+
+  // han
+  def run_storageLevel[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], numIter: Int,
+    resetProb: Double = 0.15, storageLevel: StorageLevel): Graph[Double, Double] =
+  {
+    this.storageLevel = storageLevel
+    run(graph, numIter, resetProb)
   }
 
   /**
@@ -131,7 +142,10 @@ object PageRank extends Logging {
     var iteration = 0
     var prevRankGraph: Graph[Double, Double] = null
     while (iteration < numIter) {
-      rankGraph.cache()
+      rankGraph
+          // han
+          // .cache()
+          .persist(storageLevel)
 
       // Compute the outgoing rank contributions of each vertex, perform local preaggregation, and
       // do the final aggregation at the receiving vertices. Requires a shuffle for aggregation.
@@ -150,7 +164,10 @@ object PageRank extends Logging {
 
       rankGraph = rankGraph.joinVertices(rankUpdates) {
         (id, oldRank, msgSum) => rPrb(src, id) + (1.0 - resetProb) * msgSum
-      }.cache()
+      }
+          // han
+          // .cache()
+          .persist(storageLevel)
 
       rankGraph.edges.foreachPartition(x => {}) // also materializes rankGraph.vertices
       logInfo(s"PageRank finished iteration $iteration.")
@@ -181,6 +198,15 @@ object PageRank extends Logging {
     graph: Graph[VD, ED], tol: Double, resetProb: Double = 0.15): Graph[Double, Double] =
   {
       runUntilConvergenceWithOptions(graph, tol, resetProb)
+  }
+
+  // han
+  def runUntilConvergence_storageLevel[VD: ClassTag, ED: ClassTag](
+    graph: Graph[VD, ED], tol: Double, resetProb: Double = 0.15,
+    storageLevel: StorageLevel): Graph[Double, Double] =
+  {
+    this.storageLevel = storageLevel
+    runUntilConvergence(graph, tol, resetProb)
   }
 
   /**
